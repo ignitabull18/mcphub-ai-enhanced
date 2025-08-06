@@ -1,7 +1,7 @@
 {
-  "name": "@samanhappy/mcphub",
-  "version": "dev",
-  "description": "A hub server for mcp servers",
+  "name": "mcp-nexus",
+  "version": "1.0.0",
+  "description": "AI-Enhanced MCP Hub with intelligent group creation and vector-powered tool discovery",
   "main": "dist/index.js",
   "type": "module",
   "bin": {
@@ -40,10 +40,23 @@
     "typescript",
     "server",
     "mcp",
-    "model context protocol"
+    "model context protocol",
+    "ai",
+    "machine learning",
+    "vector embeddings",
+    "smart routing",
+    "group management"
   ],
-  "author": "",
-  "license": "ISC",
+  "author": "ignitabull18",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/ignitabull18/mcphub-ai-enhanced",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ignitabull18/mcphub-ai-enhanced.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ignitabull18/mcphub-ai-enhanced/issues"
+  },
   "dependencies": {
     "@apidevtools/swagger-parser": "^11.0.1",
     "@modelcontextprotocol/sdk": "^1.12.1",

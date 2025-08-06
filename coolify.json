@@ -1,0 +1,28 @@
+{
+  "name": "mcp-nexus",
+  "description": "AI-Enhanced MCP Hub with intelligent group creation and vector-powered tool discovery",
+  "repository": "your-git-repository-url",
+  "branch": "main",
+  "buildPack": "Dockerfile",
+  "port": 3000,
+  "environment": {
+    "NODE_ENV": "production",
+    "PORT": "3000",
+    "JWT_SECRET": "your-secure-jwt-secret-here",
+    "SKIP_AUTH": "false",
+    "BASE_PATH": "",
+    "OPENAI_API_KEY": "your-openai-api-key-here",
+    "POSTGRES_HOST": "your-postgres-host-here",
+    "POSTGRES_PORT": "5432",
+    "POSTGRES_DB": "mcp_nexus",
+    "POSTGRES_USER": "postgres",
+    "POSTGRES_PASSWORD": "your-postgres-password-here",
+    "REQUEST_TIMEOUT": "60000"
+  },
+  "healthCheck": {
+    "path": "/health",
+    "interval": 30,
+    "timeout": 10,
+    "retries": 3
+  }
+}

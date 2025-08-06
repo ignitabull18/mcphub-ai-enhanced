@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  mcp-nexus:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mcp-nexus
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - JWT_SECRET=${JWT_SECRET:-your-secure-jwt-secret}
+      - SKIP_AUTH=${SKIP_AUTH:-false}
+      - BASE_PATH=${BASE_PATH:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_DB=${POSTGRES_DB:-mcp_nexus}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REQUEST_TIMEOUT=${REQUEST_TIMEOUT:-60000}
+    volumes:
+      - ./mcp_settings.json:/app/mcp_settings.json:ro
+      - ./data:/app/data
+      - ./logs:/app/logs
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - mcp-nexus-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: mcp-nexus-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mcp_nexus}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - mcp-nexus-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-mcp_nexus}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  mcp-nexus-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+    driver: local
