@@ -1,0 +1,86 @@
+%%{init: {'theme':'dark', 'themeVariables': { 'primaryColor':'#3b82f6', 'primaryTextColor':'#fff', 'primaryBorderColor':'#2563eb', 'lineColor':'#6b7280', 'secondaryColor':'#10b981', 'tertiaryColor':'#f59e0b'}}}%%
+
+graph TB
+    subgraph "Client Layer"
+        AI[AI Clients<br/>Claude/Cursor/etc]
+        API[API Clients]
+        WEB[Web Dashboard]
+    end
+    
+    subgraph "MCPHub Core"
+        subgraph "API Gateway"
+            REST[REST API<br/>Express.js]
+            SSE[SSE Endpoint<br/>Server-Sent Events]
+            HTTP[HTTP Streaming<br/>MCP Protocol]
+        end
+        
+        subgraph "Core Services"
+            AUTH[Auth Service<br/>JWT/Bearer]
+            ROUTE[Routing Service<br/>Group/Direct/Smart]
+            GROUP[Group Service<br/>Access Control]
+            MCP[MCP Service<br/>Server Management]
+        end
+        
+        subgraph "Intelligence Layer"
+            SMART[Smart Routing<br/>Semantic Search]
+            VECTOR[Vector Search<br/>OpenAI Embeddings]
+        end
+    end
+    
+    subgraph "Data Layer"
+        PG[(PostgreSQL<br/>Main Database)]
+        PGVEC[(pgvector<br/>Embeddings)]
+        CONFIG[Config Files<br/>JSON]
+        USERS[User Store<br/>Auth Data]
+    end
+    
+    subgraph "MCP Servers"
+        STDIO[stdio Servers<br/>Local Process]
+        SSESERV[SSE Servers<br/>Remote Stream]
+        HTTPSERV[HTTP Servers<br/>REST API]
+        OPENAPI[OpenAPI Servers<br/>Auto-discovery]
+    end
+    
+    %% Client connections
+    AI -.->|"MCP Protocol"| SSE
+    AI -.->|"MCP Protocol"| HTTP
+    API -->|"REST"| REST
+    WEB -->|"HTTPS"| REST
+    
+    %% Gateway to services
+    REST --> AUTH
+    SSE --> AUTH
+    HTTP --> AUTH
+    
+    %% Service interactions
+    AUTH --> ROUTE
+    ROUTE --> GROUP
+    ROUTE --> SMART
+    GROUP --> MCP
+    SMART --> VECTOR
+    
+    %% MCP connections
+    MCP ==>|"spawn"| STDIO
+    MCP ==>|"connect"| SSESERV
+    MCP ==>|"request"| HTTPSERV
+    MCP ==>|"discover"| OPENAPI
+    
+    %% Data connections
+    VECTOR -.->|"query"| PGVEC
+    GROUP -.->|"read"| CONFIG
+    AUTH -.->|"validate"| USERS
+    MCP -.->|"load"| CONFIG
+    SMART -.->|"embedding"| PG
+    
+    %% Styling
+    classDef client fill:#1e40af,stroke:#3b82f6,stroke-width:2px,color:#fff
+    classDef service fill:#059669,stroke:#10b981,stroke-width:2px,color:#fff
+    classDef data fill:#dc2626,stroke:#ef4444,stroke-width:2px,color:#fff
+    classDef server fill:#7c3aed,stroke:#8b5cf6,stroke-width:2px,color:#fff
+    classDef gateway fill:#ea580c,stroke:#f97316,stroke-width:2px,color:#fff
+    
+    class AI,API,WEB client
+    class AUTH,ROUTE,GROUP,MCP,SMART,VECTOR service
+    class PG,PGVEC,CONFIG,USERS data
+    class STDIO,SSESERV,HTTPSERV,OPENAPI server
+    class REST,SSE,HTTP gateway
