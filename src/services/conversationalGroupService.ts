@@ -44,15 +44,21 @@ export interface ChatResponse {
  * Handles AI-powered conversations for intelligent group creation
  */
 export class ConversationalGroupService {
-  private openai: OpenAI;
+  private openai: OpenAI | null = null;
   private conversations: Map<string, ConversationState> = new Map();
 
   constructor() {
-    const config = getSmartRoutingConfig();
-    this.openai = new OpenAI({
-      apiKey: config.openaiApiKey,
-      baseURL: config.openaiApiBaseUrl,
-    });
+    // Defer initialization to avoid circular dependency
+  }
+
+  private ensureInitialized() {
+    if (!this.openai) {
+      const config = getSmartRoutingConfig();
+      this.openai = new OpenAI({
+        apiKey: config.openaiApiKey,
+        baseURL: config.openaiApiBaseUrl,
+      });
+    }
   }
 
   /**
@@ -493,7 +499,8 @@ The more you tell me, the better I can tailor the groups to your needs!`;
    */
   private async extractPreferencesFromMessage(message: string): Promise<string[]> {
     try {
-      const response = await this.openai.chat.completions.create({
+      this.ensureInitialized();
+      const response = await this.openai!.chat.completions.create({
         model: 'gpt-4o-mini',
         messages: [
           {

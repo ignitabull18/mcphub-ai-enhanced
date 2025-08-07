@@ -29,30 +29,40 @@ const getDatabaseUrl = (): string => {
   return getSmartRoutingConfig().dbUrl;
 };
 
-// Default database configuration
-const defaultConfig: DataSourceOptions = {
+// Function to get default database configuration
+// Using a function to defer the getDatabaseUrl() call until it's actually needed
+const getDefaultConfig = (): DataSourceOptions => ({
   type: 'postgres',
   url: getDatabaseUrl(),
   synchronize: true,
   entities: entities,
   subscribers: [VectorEmbeddingSubscriber],
-};
+});
 
 // AppDataSource is the TypeORM data source
-let appDataSource = new DataSource(defaultConfig);
+let appDataSource: DataSource | null = null;
 
 // Global promise to track initialization status
 let initializationPromise: Promise<DataSource> | null = null;
 
+// Function to get or create the data source
+const getOrCreateDataSource = (): DataSource => {
+  if (!appDataSource) {
+    appDataSource = new DataSource(getDefaultConfig());
+  }
+  return appDataSource;
+};
+
 // Function to create a new DataSource with updated configuration
 export const updateDataSourceConfig = (): DataSource => {
   const newConfig: DataSourceOptions = {
-    ...defaultConfig,
+    ...getDefaultConfig(),
     url: getDatabaseUrl(),
   };
 
   // If the configuration has changed, we need to create a new DataSource
-  const currentUrl = (appDataSource.options as any).url;
+  const currentDataSource = getOrCreateDataSource();
+  const currentUrl = (currentDataSource.options as any).url;
   if (currentUrl !== newConfig.url) {
     console.log('Database URL configuration changed, updating DataSource...');
     appDataSource = new DataSource(newConfig);
@@ -60,21 +70,21 @@ export const updateDataSourceConfig = (): DataSource => {
     initializationPromise = null;
   }
 
-  return appDataSource;
+  return getOrCreateDataSource();
 };
 
 // Get the current AppDataSource instance
 export const getAppDataSource = (): DataSource => {
-  return appDataSource;
+  return getOrCreateDataSource();
 };
 
 // Reconnect database with updated configuration
 export const reconnectDatabase = async (): Promise<DataSource> => {
   try {
     // Close existing connection if it exists
-    if (appDataSource.isInitialized) {
+    if (getOrCreateDataSource().isInitialized) {
       console.log('Closing existing database connection...');
-      await appDataSource.destroy();
+      await getOrCreateDataSource().destroy();
     }
 
     // Reset initialization promise to allow fresh initialization
@@ -98,9 +108,9 @@ export const initializeDatabase = async (): Promise<DataSource> => {
   }
 
   // If already initialized, return the existing instance
-  if (appDataSource.isInitialized) {
+  if (getOrCreateDataSource().isInitialized) {
     console.log('Database already initialized, returning existing instance');
-    return Promise.resolve(appDataSource);
+    return Promise.resolve(getOrCreateDataSource());
   }
 
   // Create a new initialization promise
@@ -124,19 +134,19 @@ const performDatabaseInitialization = async (): Promise<DataSource> => {
     // Update configuration before initializing
     appDataSource = updateDataSourceConfig();
 
-    if (!appDataSource.isInitialized) {
+    if (!getOrCreateDataSource().isInitialized) {
       console.log('Initializing database connection...');
       // Register the vector type with TypeORM
-      await appDataSource.initialize();
-      registerPostgresVectorType(appDataSource);
+      await getOrCreateDataSource().initialize();
+      registerPostgresVectorType(getOrCreateDataSource());
 
       // Create required PostgreSQL extensions
-      await createRequiredExtensions(appDataSource);
+      await createRequiredExtensions(getOrCreateDataSource());
 
       // Set up vector column and index with a more direct approach
       try {
         // Check if table exists first
-        const tableExists = await appDataSource.query(`
+        const tableExists = await getOrCreateDataSource().query(`
           SELECT EXISTS (
             SELECT FROM information_schema.tables 
             WHERE table_schema = 'public'
@@ -150,7 +160,7 @@ const performDatabaseInitialization = async (): Promise<DataSource> => {
 
           // Step 1: Drop any existing index on the column
           try {
-            await appDataSource.query(`DROP INDEX IF EXISTS idx_vector_embeddings_embedding;`);
+            await getOrCreateDataSource().query(`DROP INDEX IF EXISTS idx_vector_embeddings_embedding;`);
           } catch (dropError: any) {
             console.warn('Note: Could not drop existing index:', dropError.message);
           }
@@ -158,14 +168,14 @@ const performDatabaseInitialization = async (): Promise<DataSource> => {
           // Step 2: Alter column type to vector (if it's not already)
           try {
             // Check column type first
-            const columnType = await appDataSource.query(`
+            const columnType = await getOrCreateDataSource().query(`
               SELECT data_type FROM information_schema.columns
               WHERE table_schema = 'public' AND table_name = 'vector_embeddings'
               AND column_name = 'embedding';
             `);
 
             if (columnType.length > 0 && columnType[0].data_type !== 'vector') {
-              await appDataSource.query(`
+              await getOrCreateDataSource().query(`
                 ALTER TABLE vector_embeddings 
                 ALTER COLUMN embedding TYPE vector USING embedding::vector;
               `);
@@ -179,7 +189,7 @@ const performDatabaseInitialization = async (): Promise<DataSource> => {
           // Step 3: Try to create appropriate indices
           try {
             // First, let's check if there are any records to determine the dimensions
-            const records = await appDataSource.query(`
+            const records = await getOrCreateDataSource().query(`
               SELECT dimensions FROM vector_embeddings LIMIT 1;
             `);
 
@@ -193,13 +203,13 @@ const performDatabaseInitialization = async (): Promise<DataSource> => {
 
             // Set the vector dimensions explicitly only if table has data
             if (records && records.length > 0) {
-              await appDataSource.query(`
+              await getOrCreateDataSource().query(`
                 ALTER TABLE vector_embeddings 
                 ALTER COLUMN embedding TYPE vector(${dimensions});
               `);
 
               // Now try to create the index
-              await appDataSource.query(`
+              await getOrCreateDataSource().query(`
                 CREATE INDEX IF NOT EXISTS idx_vector_embeddings_embedding 
                 ON vector_embeddings USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
               `);
@@ -215,7 +225,7 @@ const performDatabaseInitialization = async (): Promise<DataSource> => {
 
             try {
               // Try HNSW index instead
-              await appDataSource.query(`
+              await getOrCreateDataSource().query(`
                 CREATE INDEX IF NOT EXISTS idx_vector_embeddings_embedding 
                 ON vector_embeddings USING hnsw (embedding vector_cosine_ops);
               `);
@@ -226,7 +236,7 @@ const performDatabaseInitialization = async (): Promise<DataSource> => {
 
               try {
                 // Create a basic GIN index as last resort
-                await appDataSource.query(`
+                await getOrCreateDataSource().query(`
                   CREATE INDEX IF NOT EXISTS idx_vector_embeddings_embedding 
                   ON vector_embeddings USING gin (embedding);
                 `);
@@ -250,12 +260,12 @@ const performDatabaseInitialization = async (): Promise<DataSource> => {
       console.log('Database connection established successfully.');
 
       // Run one final setup check after schema synchronization is done
-      if (defaultConfig.synchronize) {
+      if (getDefaultConfig().synchronize) {
         try {
           console.log('Running final vector configuration check...');
 
           // Try setup again with the same code from above
-          const tableExists = await appDataSource.query(`
+          const tableExists = await getOrCreateDataSource().query(`
               SELECT EXISTS (
                 SELECT FROM information_schema.tables 
                 WHERE table_schema = 'public'
@@ -269,7 +279,7 @@ const performDatabaseInitialization = async (): Promise<DataSource> => {
             // Get the dimension size first
             try {
               // Try to get dimensions from an existing record
-              const records = await appDataSource.query(`
+              const records = await getOrCreateDataSource().query(`
                   SELECT dimensions FROM vector_embeddings LIMIT 1;
                 `);
 
@@ -279,7 +289,7 @@ const performDatabaseInitialization = async (): Promise<DataSource> => {
                 console.log(`Found vector dimension from database: ${dimensions}`);
 
                 // Ensure column type is vector with explicit dimensions
-                await appDataSource.query(`
+                await getOrCreateDataSource().query(`
                     ALTER TABLE vector_embeddings 
                     ALTER COLUMN embedding TYPE vector(${dimensions});
                   `);
@@ -288,12 +298,12 @@ const performDatabaseInitialization = async (): Promise<DataSource> => {
                 // One more attempt at creating the index with dimensions
                 try {
                   // Drop existing index if any
-                  await appDataSource.query(`
+                  await getOrCreateDataSource().query(`
                       DROP INDEX IF EXISTS idx_vector_embeddings_embedding;
                     `);
 
                   // Create new index with proper dimensions
-                  await appDataSource.query(`
+                  await getOrCreateDataSource().query(`
                       CREATE INDEX idx_vector_embeddings_embedding 
                       ON vector_embeddings USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
                     `);
@@ -316,7 +326,7 @@ const performDatabaseInitialization = async (): Promise<DataSource> => {
         }
       }
     }
-    return appDataSource;
+    return getOrCreateDataSource();
   } catch (error) {
     console.error('Error during database initialization:', error);
     throw error;
@@ -325,18 +335,22 @@ const performDatabaseInitialization = async (): Promise<DataSource> => {
 
 // Get database connection status
 export const isDatabaseConnected = (): boolean => {
-  return appDataSource.isInitialized;
+  return getOrCreateDataSource().isInitialized;
 };
 
 // Close database connection
 export const closeDatabase = async (): Promise<void> => {
-  if (appDataSource.isInitialized) {
-    await appDataSource.destroy();
+  if (getOrCreateDataSource().isInitialized) {
+    await getOrCreateDataSource().destroy();
     console.log('Database connection closed.');
   }
 };
 
-// Export AppDataSource for backward compatibility
-export const AppDataSource = appDataSource;
+// Export AppDataSource getter for backward compatibility
+export const AppDataSource = {
+  get value() {
+    return getOrCreateDataSource();
+  }
+};
 
 export default getAppDataSource;
