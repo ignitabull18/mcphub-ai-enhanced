@@ -24,9 +24,18 @@ const createRequiredExtensions = async (dataSource: DataSource): Promise<void> =
   }
 };
 
-// Get database URL from smart routing config or fallback to environment variable
+// Get database URL from environment variables to avoid circular dependency
 const getDatabaseUrl = (): string => {
-  return getSmartRoutingConfig().dbUrl;
+  // Use environment variable directly to avoid circular dependency
+  const dbUrl = process.env.DATABASE_URL || process.env.DB_URL || '';
+  if (dbUrl) {
+    return dbUrl;
+  }
+  
+  // If no environment variable is set, we'll need to handle this in the calling code
+  // For now, return empty string to avoid circular dependency
+  console.warn('No DATABASE_URL or DB_URL environment variable found. Database connection may fail.');
+  return '';
 };
 
 // Function to get default database configuration
