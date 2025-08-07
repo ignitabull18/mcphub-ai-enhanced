@@ -11,7 +11,11 @@ import { getGroup } from './sseService.js';
 import { getServersInGroup, getServerConfigInGroup } from './groupService.js';
 import { saveToolsAsVectorEmbeddings, searchToolsByVector } from './vectorSearchService.js';
 import { OpenAPIClient } from '../clients/openapi.js';
-import { getDataService } from './services.js';
+// Lazy import to avoid circular dependency
+const getDataService = async () => {
+  const { getDataService: getDataServiceImpl } = await import('./services.js');
+  return getDataServiceImpl();
+};
 import { VirtualMcpServer, VirtualClient } from './virtualServers/types.js';
 
 const servers: { [sessionId: string]: Server } = {};
@@ -528,9 +532,9 @@ export const registerAllTools = async (isInit: boolean): Promise<void> => {
 };
 
 // Get all server information
-export const getServersInfo = (): Omit<ServerInfo, 'client' | 'transport'>[] => {
+export const getServersInfo = async (): Promise<Omit<ServerInfo, 'client' | 'transport'>[]> => {
   const settings = loadSettings();
-  const dataService = getDataService();
+  const dataService = await getDataService();
   
   // Include virtual servers in the list (synchronous for now - tools will be empty initially)
   const allServerInfos: ServerInfo[] = [...serverInfos];
@@ -924,7 +928,8 @@ Available servers: ${serversList}`;
     };
   }
 
-  const allServerInfos = getDataService()
+  const dataService = await getDataService();
+  const allServerInfos = dataService
     .filterData(serverInfos)
     .filter((serverInfo) => {
       if (serverInfo.enabled === false) return false;

@@ -6,6 +6,7 @@ import { getSmartRoutingConfig } from '../utils/smartRouting.js';
 import OpenAI from 'openai';
 
 // Get OpenAI configuration from smartRouting settings or fallback to environment variables
+// This function is called lazily to avoid circular dependency issues
 const getOpenAIConfig = () => {
   const smartRoutingConfig = getSmartRoutingConfig();
   return {
@@ -499,7 +500,7 @@ export const syncAllServerToolsEmbeddings = async (): Promise<void> => {
     // Import getServersInfo to get all server information
     const { getServersInfo } = await import('./mcpService.js');
 
-    const servers = getServersInfo();
+    const servers = await getServersInfo();
     let totalToolsSynced = 0;
     let serversSynced = 0;
 

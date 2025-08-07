@@ -55,15 +55,16 @@ const getOrCreateDataSource = (): DataSource => {
 
 // Function to create a new DataSource with updated configuration
 export const updateDataSourceConfig = (): DataSource => {
-  const newConfig: DataSourceOptions = {
+  const newConfig = {
     ...getDefaultConfig(),
     url: getDatabaseUrl(),
-  };
+  } as DataSourceOptions;
 
   // If the configuration has changed, we need to create a new DataSource
   const currentDataSource = getOrCreateDataSource();
   const currentUrl = (currentDataSource.options as any).url;
-  if (currentUrl !== newConfig.url) {
+  const newUrl = (newConfig as any).url;
+  if (currentUrl !== newUrl) {
     console.log('Database URL configuration changed, updating DataSource...');
     appDataSource = new DataSource(newConfig);
     // Reset initialization promise when configuration changes
