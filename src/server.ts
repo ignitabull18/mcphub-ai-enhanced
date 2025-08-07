@@ -118,27 +118,43 @@ export class AppServer {
 
     if (fs.existsSync(this.frontendPath) && fs.existsSync(path.join(this.frontendPath, 'index.html'))) {
       console.log(`Serving frontend from: ${this.frontendPath}`);
-      // Serve static files with base path
-      this.app.use(this.basePath, express.static(this.frontendPath));
-
-      // Add the wildcard route for SPA with base path
-      this.app.get(`${this.basePath}/*`, (_req, res) => {
+      
+      // Serve frontend on /app path
+      this.app.use('/app', express.static(this.frontendPath));
+      
+      // Add the wildcard route for SPA on /app path
+      this.app.get('/app/*', (_req, res) => {
         res.sendFile(path.join(this.frontendPath!, 'index.html'));
       });
 
-      // Also handle root redirect if base path is set
-      if (this.basePath) {
-        this.app.get('/', (_req, res) => {
-          res.redirect(this.basePath);
-        });
-      }
+      // Redirect root to /app for frontend access
+      this.app.get('/', (_req, res) => {
+        res.redirect('/app');
+      });
+      
+      // Keep API routes on /api path
+      console.log('Frontend available at /app, API at /api');
     } else {
       console.warn('Frontend not found at /app/public. Server will run without frontend.');
-      const rootPath = this.basePath || '/';
-      this.app.get(rootPath, (_req, res) => {
-        res
-          .status(404)
-          .send('Frontend not found. MCPHub API is running, but the UI is not available.');
+      
+      // Show helpful message with API endpoints
+      this.app.get('/', (_req, res) => {
+        res.send(`
+          <html>
+            <head><title>MCPHub API</title></head>
+            <body>
+              <h1>MCPHub API is Running</h1>
+              <p>The frontend UI is not available, but the API is working.</p>
+              <h2>Available Endpoints:</h2>
+              <ul>
+                <li><a href="/api/servers">/api/servers</a> - List MCP servers</li>
+                <li><a href="/api/settings">/api/settings</a> - Get settings</li>
+                <li><a href="/api/health">/api/health</a> - Health check</li>
+              </ul>
+              <p>If you need the frontend, please check the deployment configuration.</p>
+            </body>
+          </html>
+        `);
       });
     }
   }
