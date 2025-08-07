@@ -1,7 +1,10 @@
 import { VirtualMcpServer } from './types.js';
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { loadSettings, saveSettings } from '../../config/index.js';
-import * as mcpServiceModule from '../mcpService.js';
+import * as mcpService from '../mcpService.js';
+import * as groupService from '../groupService.js';
+import logService from '../logService.js';
+import { getService } from '../registry.js';
 
 export class HubManagementVirtualServer implements VirtualMcpServer {
   name = '@hub-management';
@@ -315,8 +318,7 @@ export class HubManagementVirtualServer implements VirtualMcpServer {
   }
 
   private async executeTool(name: string, args: any): Promise<any> {
-    // Direct imports since services aren't registered
-    const mcpService = mcpServiceModule;
+    // Services are imported at the top of the file
 
     switch (name) {
       // Server Management
@@ -372,7 +374,7 @@ export class HubManagementVirtualServer implements VirtualMcpServer {
         settings.mcpServers[args.name] = serverConfig;
         
         await saveSettings(settings);
-        await mcpService.initialize();
+        await mcpService.initializeClientsFromSettings(false);
         
         return {
           success: true,
@@ -397,7 +399,7 @@ export class HubManagementVirtualServer implements VirtualMcpServer {
         if (args.url !== undefined) currentConfig.url = args.url;
         
         await saveSettings(settings);
-        await mcpService.initialize();
+        await mcpService.initializeClientsFromSettings(false);
         
         return {
           success: true,
@@ -415,7 +417,7 @@ export class HubManagementVirtualServer implements VirtualMcpServer {
         delete settings.mcpServers[args.name];
         
         await saveSettings(settings);
-        await mcpService.initialize();
+        await mcpService.initializeClientsFromSettings(false);
         
         return {
           success: true,
@@ -433,7 +435,7 @@ export class HubManagementVirtualServer implements VirtualMcpServer {
         settings.mcpServers[args.name].enabled = args.enabled;
         
         await saveSettings(settings);
-        await mcpService.initialize();
+        await mcpService.initializeClientsFromSettings(false);
         
         return {
           success: true,
@@ -474,7 +476,7 @@ export class HubManagementVirtualServer implements VirtualMcpServer {
 
       // Group Management
       case 'list_groups': {
-        const groups = await groupService.getGroups();
+        const groups = groupService.getAllGroups();
         
         if (!args.includeServerDetails) {
           return groups.map((g: any) => ({
@@ -495,7 +497,11 @@ export class HubManagementVirtualServer implements VirtualMcpServer {
           servers: args.servers || [],
         };
         
-        const createdGroup = await groupService.createGroup(newGroup);
+        const createdGroup = groupService.createGroup(
+          args.name,
+          args.description,
+          args.servers || []
+        );
         
         return {
           success: true,
@@ -509,7 +515,7 @@ export class HubManagementVirtualServer implements VirtualMcpServer {
         if (args.name !== undefined) updates.name = args.name;
         if (args.description !== undefined) updates.description = args.description;
         
-        const updatedGroup = await groupService.updateGroup(args.id, updates);
+        const updatedGroup = groupService.updateGroup(args.id, updates);
         
         return {
           success: true,
@@ -519,7 +525,7 @@ export class HubManagementVirtualServer implements VirtualMcpServer {
       }
 
       case 'delete_group': {
-        await groupService.deleteGroup(args.id);
+        groupService.deleteGroup(args.id);
         
         return {
           success: true,
@@ -617,7 +623,7 @@ export class HubManagementVirtualServer implements VirtualMcpServer {
         const delay = args.delay || 0;
         
         setTimeout(() => {
-          mcpService.initialize();
+          mcpService.initializeClientsFromSettings(false);
         }, delay * 1000);
         
         return {

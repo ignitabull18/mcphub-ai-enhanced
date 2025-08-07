@@ -89,14 +89,16 @@ export class MemoryService {
         },
       };
 
-      this.memory = Memory.from_config(memoryConfig);
+      // Memory integration would go here if mem0ai is installed
+      // For now, we use the mock implementation
+      this.memory = new MockMemory();
       this.isInitialized = true;
       
-      console.log('🧠 Memory service initialized successfully with PGVector backend');
+      console.log('🧠 Memory service initialized with mock implementation');
     } catch (error) {
       console.warn('Failed to initialize memory service:', error);
       // Fall back to in-memory mode for development
-      this.memory = new Memory();
+      this.memory = new MockMemory();
     }
   }
 
