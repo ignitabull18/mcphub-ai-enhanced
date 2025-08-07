@@ -58,6 +58,9 @@ RUN pnpm build
 # Explicitly copy frontend build to a fixed location for reliable serving
 RUN mkdir -p /app/public && cp -r frontend/dist/* /app/public/
 
+# Also copy static frontend as fallback
+RUN mkdir -p /app/public-static && cp -r frontend-static/* /app/public-static/
+
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 

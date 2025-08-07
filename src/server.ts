@@ -113,8 +113,11 @@ export class AppServer {
   }
 
   private findAndServeFrontend(): void {
-    // Use fixed frontend path for reliable serving
+    // Try the main frontend build first
     this.frontendPath = path.join(process.cwd(), 'public');
+    
+    // Fallback to static frontend if main frontend not found
+    const staticFrontendPath = path.join(process.cwd(), 'public-static');
 
     if (fs.existsSync(this.frontendPath) && fs.existsSync(path.join(this.frontendPath, 'index.html'))) {
       console.log(`Serving frontend from: ${this.frontendPath}`);
@@ -134,8 +137,26 @@ export class AppServer {
       
       // Keep API routes on /api path
       console.log('Frontend available at /app, API at /api');
+    } else if (fs.existsSync(staticFrontendPath) && fs.existsSync(path.join(staticFrontendPath, 'index.html'))) {
+      console.log(`Serving static frontend from: ${staticFrontendPath}`);
+      
+      // Serve static frontend on /app path
+      this.app.use('/app', express.static(staticFrontendPath));
+      
+      // Add the wildcard route for SPA on /app path
+      this.app.get('/app/*', (_req, res) => {
+        res.sendFile(path.join(staticFrontendPath, 'index.html'));
+      });
+
+      // Redirect root to /app for frontend access
+      this.app.get('/', (_req, res) => {
+        res.redirect('/app');
+      });
+      
+      // Keep API routes on /api path
+      console.log('Static frontend available at /app, API at /api');
     } else {
-      console.warn('Frontend not found at /app/public. Server will run without frontend.');
+      console.warn('No frontend found. Server will run without frontend.');
       
       // Show helpful message with API endpoints
       this.app.get('/', (_req, res) => {
