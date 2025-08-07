@@ -53,7 +53,23 @@
   ],
   "systemConfig": {
     "routing": {
-      "skipAuth": true
+      "skipAuth": true,
+      "enableGlobalRoute": true,
+      "enableGroupNameRoute": true,
+      "enableBearerAuth": false,
+      "bearerAuthKey": ""
+    },
+    "install": {
+      "pythonIndexUrl": "https://pypi.org/simple",
+      "npmRegistry": "https://registry.npmjs.org/",
+      "baseUrl": "https://mcp-nexus.ignitabull.org"
+    },
+    "smartRouting": {
+      "enabled": true,
+      "dbUrl": "postgresql://mcphub:your_secure_password@your-database-host:5432/mcphub",
+      "openaiApiBaseUrl": "https://api.openai.com/v1",
+      "openaiApiKey": "sk-your-openai-api-key-here",
+      "openaiApiEmbeddingModel": "text-embedding-3-small"
     }
   }
 }
