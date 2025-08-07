@@ -3,7 +3,6 @@ import { DataSource, DataSourceOptions } from 'typeorm';
 import entities from './entities/index.js';
 import { registerPostgresVectorType } from './types/postgresVectorType.js';
 import { VectorEmbeddingSubscriber } from './subscribers/VectorEmbeddingSubscriber.js';
-import { getSmartRoutingConfig } from '../utils/smartRouting.js';
 
 // Helper function to create required PostgreSQL extensions
 const createRequiredExtensions = async (dataSource: DataSource): Promise<void> => {
