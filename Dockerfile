@@ -51,7 +51,12 @@ COPY . .
 # Download the latest servers.json from mcpm.sh and replace the existing file
 RUN curl -s -f --connect-timeout 10 https://mcpm.sh/api/servers.json -o servers.json || echo "Failed to download servers.json, using bundled version"
 
-RUN pnpm frontend:build && pnpm build
+# Build frontend and backend separately for clarity and explicit copying
+RUN pnpm frontend:build
+RUN pnpm build
+
+# Explicitly copy frontend build to a fixed location for reliable serving
+RUN mkdir -p /app/public && cp -r frontend/dist/* /app/public/
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh

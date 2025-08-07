@@ -113,29 +113,27 @@ export class AppServer {
   }
 
   private findAndServeFrontend(): void {
-    // Find frontend path
-    this.frontendPath = this.findFrontendDistPath();
+    // Use fixed frontend path for reliable serving
+    this.frontendPath = path.join(process.cwd(), 'public');
 
-    if (this.frontendPath) {
+    if (fs.existsSync(this.frontendPath) && fs.existsSync(path.join(this.frontendPath, 'index.html'))) {
       console.log(`Serving frontend from: ${this.frontendPath}`);
       // Serve static files with base path
       this.app.use(this.basePath, express.static(this.frontendPath));
 
       // Add the wildcard route for SPA with base path
-      if (fs.existsSync(path.join(this.frontendPath, 'index.html'))) {
-        this.app.get(`${this.basePath}/*`, (_req, res) => {
-          res.sendFile(path.join(this.frontendPath!, 'index.html'));
-        });
+      this.app.get(`${this.basePath}/*`, (_req, res) => {
+        res.sendFile(path.join(this.frontendPath!, 'index.html'));
+      });
 
-        // Also handle root redirect if base path is set
-        if (this.basePath) {
-          this.app.get('/', (_req, res) => {
-            res.redirect(this.basePath);
-          });
-        }
+      // Also handle root redirect if base path is set
+      if (this.basePath) {
+        this.app.get('/', (_req, res) => {
+          res.redirect(this.basePath);
+        });
       }
     } else {
-      console.warn('Frontend dist directory not found. Server will run without frontend.');
+      console.warn('Frontend not found at /app/public. Server will run without frontend.');
       const rootPath = this.basePath || '/';
       this.app.get(rootPath, (_req, res) => {
         res
@@ -166,45 +164,10 @@ export class AppServer {
     return this.app;
   }
 
-  // Helper method to find frontend dist path in different environments
-  private findFrontendDistPath(): string | null {
-    // Debug flag for detailed logging
-    const debug = process.env.DEBUG === 'true';
-
-    if (debug) {
-      console.log('DEBUG: Current directory:', process.cwd());
-      console.log('DEBUG: Script directory:', currentFileDir);
-    }
-
-    // First, find the package root directory
-    const packageRoot = this.findPackageRoot();
-
-    if (debug) {
-      console.log('DEBUG: Using package root:', packageRoot);
-    }
-
-    if (!packageRoot) {
-      console.warn('Could not determine package root directory');
-      return null;
-    }
-
-    // Check for frontend dist in the standard location
-    const frontendDistPath = path.join(packageRoot, 'frontend', 'dist');
-
-    if (debug) {
-      console.log(`DEBUG: Checking frontend at: ${frontendDistPath}`);
-    }
-
-    if (
-      fs.existsSync(frontendDistPath) &&
-      fs.existsSync(path.join(frontendDistPath, 'index.html'))
-    ) {
-      return frontendDistPath;
-    }
-
-    console.warn('Frontend distribution not found at', frontendDistPath);
-    return null;
-  }
+  // Removed findFrontendDistPath as frontend is now copied to a fixed /app/public location
+  // The logic for finding package root is still relevant for other parts of the application,
+  // but not for serving the frontend directly.
+  // private findFrontendDistPath(): string | null { ... }
 
   // Helper method to find the package root (where package.json is located)
   private findPackageRoot(): string | null {
